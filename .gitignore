@@ -2,3 +2,13 @@
 /.idea/
 __pycache__/
 .agent-config/
+
+# Python package build artifacts
+packages/pypi/dist/
+packages/pypi/build/
+packages/pypi/*.egg-info/
+packages/pypi/**/*.egg-info/
+
+# npm package build artifacts
+packages/npm/node_modules/
+packages/npm/*.tgz

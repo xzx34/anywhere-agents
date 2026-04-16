@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>anywhere-agents — hero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* USC cardinal-centric palette, matching yzhao062.github.io */
+    --usc:        #990000;
+    --usc-dark:   #7a0000;
+    --usc-tint:   #fff7f7;
+    --usc-strip:  #ffe5e5;
+    --link:       #2B5597;
+    --gold:       #ffcc00;
+
+    --ink:        #1a1a1a;
+    --muted:      #666666;
+    --muted-2:    #767676;
+    --line:       #e5e5e5;
+    --sheet:      #f8f8f8;
+    --paper:      #ffffff;
+
+    /* panel accents — subtle so cardinal stays dominant */
+    --c1: #c1121f;  /* safety (red-ish, kept close to cardinal) */
+    --c2: #2B5597;  /* review (site link blue) */
+    --c3: #1e6f4f;  /* writing (muted green) */
+    --c4: #6a4c93;  /* router (muted purple) */
+    --c5: #b45309;  /* git (amber) */
+    --c6: #0f7689;  /* shell (teal) */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: "Roboto", -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: #ffffff;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .poppins { font-family: "Poppins", "Roboto", -apple-system, sans-serif; }
+
+  .sheet {
+    width: 1440px;
+    background: #ffffff;
+  }
+
+  /* ── Cardinal header bar (mirrors site navbar) ─────────────────────── */
+  .topbar {
+    background: var(--usc);
+    color: #ffffff;
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ffffff;
+    flex-shrink: 0;
+    background: #eaeaea;
+  }
+
+  .topbar .name-stack { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .topbar .project {
+    font-family: "Poppins", sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .topbar .tagline {
+    font-size: 15px;
+    color: #fde0e0;
+    font-weight: 400;
+  }
+  .topbar .spacer { flex: 1; }
+  .topbar .credential {
+    text-align: right;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #ffe5e5;
+    font-weight: 400;
+  }
+  .topbar .credential .who { color: #ffffff; font-weight: 700; font-size: 14px; }
+  .topbar .credential .usc { color: #ffe5e5; }
+  .topbar .credential a { color: #ffffff; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.4); }
+
+  /* ── Signature strip: USC tint, left-border motif ──────────────────── */
+  .sig-strip {
+    background: var(--usc-tint);
+    border-left: 4px solid var(--usc);
+    margin: 24px 40px 0;
+    padding: 14px 20px;
+    font-size: 14.5px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .sig-strip .pill {
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--usc);
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .sig-strip .lead { font-weight: 500; color: var(--ink); }
+  .sig-strip .lead b { color: var(--usc); font-weight: 700; }
+
+  /* ── Panel grid ────────────────────────────────────────────────────── */
+  .grid-wrap { padding: 20px 40px 0; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent, var(--usc));
+    border-radius: 4px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .panel.c1 { --accent: var(--c1); --tint: rgba(193, 18, 31, 0.05); }
+  .panel.c2 { --accent: var(--c2); --tint: rgba(43, 85, 151, 0.05); }
+  .panel.c3 { --accent: var(--c3); --tint: rgba(30, 111, 79, 0.05); }
+  .panel.c4 { --accent: var(--c4); --tint: rgba(106, 76, 147, 0.05); }
+  .panel.c5 { --accent: var(--c5); --tint: rgba(180, 83, 9, 0.05); }
+  .panel.c6 { --accent: var(--c6); --tint: rgba(15, 118, 137, 0.05); }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .panel-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--tint);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .panel-icon svg { width: 16px; height: 16px; stroke-width: 2; }
+
+  .panel-title {
+    font-family: "Poppins", "Roboto", sans-serif;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .panel-body {
+    background: var(--sheet);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 12px 14px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .mono { font-family: "SF Mono", "Consolas", "Segoe UI Mono", monospace; font-size: 12px; }
+
+  .guard-warn { color: var(--c1); font-weight: 700; font-size: 12.5px; font-family: "SF Mono", "Consolas", monospace; line-height: 1.3; }
+  .guard-sub  { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .guard-blocked {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .guard-blocked code {
+    font-family: "SF Mono", "Consolas", monospace;
+    background: var(--paper);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--c1);
+    border: 1px solid var(--line);
+  }
+
+  .review-line { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: "SF Mono", "Consolas", monospace; }
+  .review-line .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 3px; font-weight: 700; font-family: "Roboto", sans-serif; letter-spacing: 0.03em; }
+  .tag-high { background: #fee2e2; color: #991b1b; }
+  .tag-med  { background: #fef3c7; color: #92400e; }
+  .tag-low  { background: #dcfce7; color: #166534; }
+  .tag-new  { background: #dbeafe; color: #1e40af; }
+  .review-line .status { color: var(--c3); font-weight: 700; }
+  .review-line .kv     { color: var(--muted); }
+
+  .writing-list { display: flex; flex-direction: column; gap: 3px; }
+  .writing-row { display: flex; align-items: center; gap: 8px; font-family: "SF Mono", "Consolas", monospace; font-size: 13px; }
+  .writing-row .x    { color: var(--c1); font-weight: 800; }
+  .writing-row .word { color: var(--ink); text-decoration: line-through; text-decoration-color: rgba(193, 18, 31, 0.55); text-decoration-thickness: 1.5px; }
+
+  .prompt-line { font-family: "SF Mono", "Consolas", monospace; font-size: 12.5px; display: flex; gap: 6px; align-items: flex-start; }
+  .prompt-line .user       { color: var(--c4); font-weight: 700; }
+  .prompt-line .router-out { color: var(--muted); font-size: 12px; padding-left: 14px; }
+  .prompt-line .arrow      { color: var(--c4); }
+
+  .git-rule { font-family: "SF Mono", "Consolas", monospace; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+  .git-rule .ask { color: var(--c5); font-weight: 700; font-size: 10.5px; background: #ffedd5; padding: 1px 6px; border-radius: 3px; font-family: "Roboto", sans-serif; letter-spacing: 0.03em; }
+  .git-rule code { color: var(--ink); }
+
+  .shell-row { font-family: "SF Mono", "Consolas", monospace; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+  .shell-row .x   { color: var(--c1); font-weight: 800; }
+  .shell-row .ok  { color: var(--c3); font-weight: 800; }
+  .shell-row .cmd { color: var(--ink); }
+
+  .takeaway {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .takeaway .arrow { color: var(--accent); font-weight: 700; }
+
+  /* ── Footer strip: cardinal, like site nav ─────────────────────────── */
+  .footer {
+    margin: 22px 40px 28px;
+    padding: 14px 20px;
+    background: var(--usc);
+    color: #ffffff;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .footer .sep { color: rgba(255, 255, 255, 0.45); }
+  .footer .kbd { font-family: "SF Mono", "Consolas", monospace; background: rgba(0, 0, 0, 0.25); padding: 3px 9px; border-radius: 3px; font-size: 12px; color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+  .footer b { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- Cardinal header bar, matches yzhao062.github.io navbar -->
+  <div class="topbar">
+    <img class="avatar" src="avatar.jpg" alt="Yue Zhao" onerror="this.style.display='none'">
+    <div class="name-stack">
+      <div class="project">anywhere-agents</div>
+      <div class="tagline">A portable, battle-tested AI agent stack · fork it, run it in any repo</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="credential">
+      <div class="who">Yue Zhao</div>
+      <div class="usc">Assistant Professor · USC Viterbi · FORTIS Lab</div>
+      <div class="usc">PyOD 9.8k★ · 38M+ downloads · 12k+ citations</div>
+    </div>
+  </div>
+
+  <!-- Signature tinted strip, echoes site's cardinal left-border callout -->
+  <div class="sig-strip">
+    <span class="pill">What you get</span>
+    <span class="lead">Six opinionated defaults, <b>tuned from daily use</b> across many repos, machines, and workflows. Consume directly or fork.</span>
+  </div>
+
+  <div class="grid-wrap">
+    <div class="grid">
+
+      <!-- Panel 1: Guard -->
+      <div class="panel c1">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="panel-title">Safety that is loud but not noisy</div>
+        </div>
+        <div class="panel-body">
+          <div class="guard-warn">STOP! HAMMER TIME!</div>
+          <div class="guard-warn">A wild git push appeared!</div>
+          <div class="guard-sub">Think before you click · [settings]</div>
+          <div class="guard-blocked">
+            Warns: <code>git push</code> <code>git reset --hard</code> <code>gh pr merge</code>
+          </div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> impossible-to-auto-dismiss · read-only stays fast</div>
+      </div>
+
+      <!-- Panel 2: Dual-agent review -->
+      <div class="panel c2">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg></div>
+          <div class="panel-title">Structured dual-agent review loop</div>
+        </div>
+        <div class="panel-body">
+          <div class="mono" style="color: var(--muted); margin-bottom: 4px;">&lt;!-- Round 2 --&gt;</div>
+          <div class="review-line"><span class="status">✓</span><span class="kv">Verification notes</span></div>
+          <div class="review-line"><span class="tag tag-high">HIGH</span><span>R1 #1 Fixed</span></div>
+          <div class="review-line"><span class="tag tag-med">MED</span><span>R1 #2 Fixed</span></div>
+          <div class="review-line"><span class="tag tag-low">LOW</span><span>R1 #3 Fixed</span></div>
+          <div class="review-line" style="margin-top: 4px;"><span class="tag tag-new">NEW</span><span class="kv">0 open · release OK</span></div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> content-type lenses · round history · no re-litigation</div>
+      </div>
+
+      <!-- Panel 3: Writing style -->
+      <div class="panel c3">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+          <div class="panel-title">Writing that does not sound like a chatbot</div>
+        </div>
+        <div class="panel-body">
+          <div class="writing-list">
+            <div class="writing-row"><span class="x">✗</span><span class="word">delve</span></div>
+            <div class="writing-row"><span class="x">✗</span><span class="word">pivotal</span></div>
+            <div class="writing-row"><span class="x">✗</span><span class="word">underscore</span></div>
+            <div class="writing-row"><span class="x">✗</span><span class="word">harmonize</span></div>
+            <div class="writing-row"><span class="x">✗</span><span class="word">groundbreaking</span></div>
+            <div class="writing-row"><span class="x">✗</span><span style="color: var(--muted);">em-dash as casual punctuation</span></div>
+          </div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> 40+ AI-tells avoided · format preserved (LaTeX, MD, rST)</div>
+      </div>
+
+      <!-- Panel 4: Router -->
+      <div class="panel c4">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></div>
+          <div class="panel-title">Auto-dispatch to the right skill</div>
+        </div>
+        <div class="panel-body">
+          <div class="prompt-line"><span class="user">you:</span><span>"review this"</span></div>
+          <div class="prompt-line router-out">· detects staged changes</div>
+          <div class="prompt-line router-out">· content type: code</div>
+          <div class="prompt-line router-out">· dispatches <span style="color: var(--c4); font-weight: 700;">implement-review</span></div>
+          <div class="prompt-line router-out">· lens: code (Google eng-practices)</div>
+          <div class="prompt-line" style="margin-top: 5px;"><span class="arrow">⇒</span><span style="color: var(--c3); font-weight: 600;">review starts, no skill name typed</span></div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> keyword · file type · directory hint routing</div>
+      </div>
+
+      <!-- Panel 5: Git safety -->
+      <div class="panel c5">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="panel-title">Git safety by default</div>
+        </div>
+        <div class="panel-body">
+          <div class="git-rule"><span class="ask">ASK</span><code>git commit *</code></div>
+          <div class="git-rule"><span class="ask">ASK</span><code>git push *</code></div>
+          <div class="git-rule"><span class="ask">ASK</span><code>git reset --hard *</code></div>
+          <div class="git-rule"><span class="ask">ASK</span><code>gh pr merge *</code></div>
+          <div class="git-rule"><span class="ask">ASK</span><code>rm -rf *</code></div>
+          <div style="margin-top: 4px; font-size: 11.5px; color: var(--muted);">Read-only <code style="background: var(--paper); padding: 1px 4px; border-radius: 3px; border: 1px solid var(--line);">git status</code> <code style="background: var(--paper); padding: 1px 4px; border-radius: 3px; border: 1px solid var(--line);">git diff</code> stay silent</div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> muscle-memory yes cannot hurt you</div>
+      </div>
+
+      <!-- Panel 6: Shell hygiene -->
+      <div class="panel c6">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+          <div class="panel-title">Shell patterns the agent just follows</div>
+        </div>
+        <div class="panel-body">
+          <div class="shell-row"><span class="x">✗</span><span class="cmd">cd ../other-repo && git status</span></div>
+          <div style="font-size: 11px; color: var(--muted); margin-left: 22px;">compound cd triggers approval prompt</div>
+          <div class="shell-row" style="margin-top: 8px;"><span class="ok">✓</span><span class="cmd">git -C ../other-repo status</span></div>
+          <div style="font-size: 11px; color: var(--muted); margin-left: 22px;">single command, passes silently</div>
+          <div class="shell-row" style="margin-top: 8px;"><span class="ok">✓</span><span class="cmd">python path/to/script.py</span></div>
+          <div style="font-size: 11px; color: var(--muted); margin-left: 22px;">pass paths as args, not cd + cmd</div>
+        </div>
+        <div class="takeaway"><span class="arrow">→</span> fewer approval prompts · faster flow</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Cardinal footer strip: echoes site navbar -->
+  <div class="footer">
+    <span><b>one-line bootstrap</b></span>
+    <span class="sep">·</span>
+    <span>fork or consume directly</span>
+    <span class="sep">·</span>
+    <span>git is the subscription engine</span>
+    <span class="sep">·</span>
+    <span class="kbd">macOS · Linux · Windows</span>
+  </div>
+
+</div>
+</body>
+</html>
