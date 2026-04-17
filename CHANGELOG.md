@@ -11,6 +11,46 @@ Version tags apply uniformly to the repo content **and** the matching `anywhere-
 
 _No unreleased changes queued._
 
+## [0.1.4] — 2026-04-16
+
+User-visible session start banner, real-agent smoke (local + CI), pre-push safety hook, broadened validate matrix (macOS + Python 3.9-3.13), and published-package registry smoke. No breaking changes to the install flow.
+
+### Added
+
+- **Session Start banner** in `AGENTS.md` Session Start Check. Agents are now required to emit a structured banner as the first lines of their first response, showing `📦 anywhere-agents active`, OS, Agent, Codex config summary, Skills count + names, Hooks status, and a Session check line. Makes "bootstrap actually ran" visible to the user instead of silent.
+- **`scripts/remote-smoke.sh`** — real-agent smoke for post-publish / published-install verification. Bootstraps a throwaway project via the published `pipx run anywhere-agents`, `npx anywhere-agents`, or raw-shell install, verifies expected files + user-level hooks deploy, then runs `claude -p` and `codex exec` non-interactively and asserts each response mentions the four shipped skills. Auto-detects install method (pipx → npx → raw curl). Distinct from `scripts/pre-push-smoke.sh`, which validates the release-candidate checkout before tagging. Validated on Windows daily-driver and on the Ubuntu DGX Spark via `ssh -6 spark 'bash -s' < scripts/remote-smoke.sh`.
+- **`.githooks/pre-push`** — runs `scripts/pre-push-smoke.sh` when a push includes agent-critical files (`AGENTS.md`, `bootstrap/`, `scripts/`, `skills/`). `pre-push-smoke.sh` validates the CURRENT checkout (generator determinism + `claude -p` + `codex exec` against committed rule files) — distinct from `scripts/remote-smoke.sh`, which validates the published install path. Pure doc / test / CI-workflow pushes skip the smoke automatically and push fast. Bypass with `git push --no-verify`. Enable per-clone with `git config core.hooksPath .githooks`.
+- **`.github/workflows/real-agent-smoke.yml`** — CI workflow that installs Claude Code and Codex CLIs on ubuntu-latest, invokes them against the committed `CLAUDE.md` / `agents/codex.md` using API key secrets, and asserts each response lists the shipped skills. Narrow triggers (`release: published` + `workflow_dispatch`) keep per-token API cost low (~$0.04 per run). Requires `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` repo secrets.
+- **`.github/workflows/package-smoke.yml`** — triggered on `release: published` + weekly cron + manual dispatch. Installs the published PyPI and npm artifacts on a cross-OS × cross-Python/Node matrix (ubuntu × py 3.9/3.12/3.13, ubuntu × node 18/20/22, plus latest on Windows + macOS) and asserts `--version`, `--help`, `--dry-run` all succeed. Catches registry drift and cross-runtime install regressions that unit tests cannot see.
+
+### Changed
+
+- **`.github/workflows/validate.yml` matrix expanded** from 2 OS × Python 3.12 to 3 OS × Python 3.9-3.13 (9 jobs: ubuntu × 3.9/3.10/3.11/3.12/3.13, windows × 3.12/3.13, macos × 3.12/3.13). Added a separate **`docs-strict-build`** job (Ubuntu, Python 3.12) that runs `mkdocs build --strict --clean` on every push to catch Read-the-Docs regressions before they hit the live site.
+- README stars badge (English and Simplified Chinese) carries `cacheSeconds=300`, shortening Shields.io server-side cache from the default (up to 1 hour) to 5 minutes. Users see new star counts reflected faster.
+- `CONTRIBUTING.md` documents the pre-push hook enable step and lists the four shipped skills (previously listed only two — drive-by correction).
+- `agent-config/docs/anywhere-agents.md` release workflow gains step 6 (real-agent smoke before tagging, with cross-reference to the private DGX setup doc and the CI equivalent). Subsequent steps renumbered.
+
+### Fixed
+
+- **`scripts/remote-smoke.sh` stdin leak** — when invoked via `ssh 'bash -s' < script`, `claude -p` and `codex exec` consumed the remaining stdin (the rest of the script), silently aborting later steps with a misleading exit code 0. Now redirects stdin from `/dev/null` on both agent calls.
+- **`scripts/remote-smoke.sh` argv parsing** — `$INSTALL_CMD` was unquoted, word-splitting multi-command strings like `mkdir -p X && curl …` into literal argv for `mkdir`. Now uses `eval "$INSTALL_CMD"` so shell operators in the install string parse correctly.
+- **`scripts/remote-smoke.sh` bootstrap file check** was hardcoded to `bootstrap.sh`, which failed on Windows Git Bash where the npm shim downloads `bootstrap.ps1` instead. Now accepts either platform-appropriate variant.
+- **Session Start Check "not configured" phrasing** originally said `not configured — see Codex MCP Integration below`, which leaked a broken self-reference into the generated `CLAUDE.md` (Codex MCP section is stripped there). Shortened to `not configured`; regression test in `test_generator.py` asserts the strip invariant.
+
+### Review history
+
+0.1.4 passed `implement-review` with Codex before release. Resolved findings:
+
+- **Medium** — pre-push hook initially invoked `scripts/remote-smoke.sh`, which tests the published package; this was a false-positive gate that could pass while the release-candidate checkout was broken. Fixed by adding `scripts/pre-push-smoke.sh` (validates the current checkout via generator determinism + `claude -p` / `codex exec` against the committed rule files) and pointing the pre-push hook at it. `remote-smoke.sh` retained for post-publish / published-install verification.
+- **Medium** — `.github/workflows/package-smoke.yml` did not pin the install spec to the release tag, so a release event could pass while testing an older version the registry still served as latest. Fixed: workflow now resolves the expected version from `github.event.release.tag_name` (or `inputs.version` for manual dispatch), pins the install, and asserts the CLI's `--version` output contains the expected version.
+- **Medium** — `CHANGELOG.md` lost the `## [0.1.3] — 2026-04-16` heading when the 0.1.4 section was inserted, folding old 0.1.3 content under 0.1.4. Fixed: heading restored.
+- **Medium** — `RELEASING.md` pre-tag gate and `agent-config/docs/anywhere-agents.md` release-workflow step 6 pointed at `scripts/remote-smoke.sh` (published-package path) rather than the candidate checkout. Fixed: both now invoke `pre-push-smoke.sh` for the candidate, with `remote-smoke.sh` documented separately for post-publish verification.
+- **Low** — stale `remote-smoke.sh` references in `.githooks/pre-push` header comment and skip message, `CONTRIBUTING.md` pre-push section (including wrong prerequisites), `agent-config/README.md` pre-push subsection, and the `CHANGELOG.md` 0.1.4 bullet describing `remote-smoke.sh` as "local / pre-tag validation." Fixed: all references distinguish the two scripts correctly.
+- **Low** — `agent-config/docs/anywhere-agents.md` said the CI real-agent smoke runs "on every push," contradicting the narrow `release: published` + `workflow_dispatch` triggers in `real-agent-smoke.yml`. Fixed.
+- **Low** — cost estimate for the real-agent CI workflow said `~$0.02` in the workflow header and `~$0.04` in the CHANGELOG. Fixed: both say `~$0.04 per run` (two short API calls).
+
+No High-priority findings at any round.
+
 ## [0.1.3] — 2026-04-16
 
 Central `AGENTS.md` → per-agent file generator (`CLAUDE.md`, `agents/codex.md`), Claude Code SessionStart hook that enforces bootstrap automatically, Scenario E in the README for the "you are running suboptimal defaults without knowing" pitch, and a 1:1 Simplified Chinese README.
@@ -180,7 +220,8 @@ Initial public release. The sanitized downstream of the author's private daily-d
 - **Medium** — README / CHANGELOG / hero overstated the guard hook's scope by listing `rm -rf` alongside Git/GitHub commands. Corrected to distinguish guard-covered commands from settings-based permission prompts.
 - **Low** — Trailing whitespace in `AGENTS.md`; `docs/hero.html` external avatar URL (vendored to `docs/avatar.jpg` for reproducibility). Both fixed.
 
-[Unreleased]: https://github.com/yzhao062/anywhere-agents/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/yzhao062/anywhere-agents/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.4
 [0.1.3]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.3
 [0.1.2]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.2
 [0.1.1]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.1

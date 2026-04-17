@@ -1,0 +1,88 @@
+name: Real-Agent Smoke
+
+# Invokes Claude Code and Codex non-interactively against the repo's shipped
+# CLAUDE.md / AGENTS.md to verify each agent actually loads the config and
+# sees the skill roster. GitHub Actions runners do not ship the agents;
+# this workflow installs them, uses API key secrets, and spends ~$0.04
+# per run (two short API calls: one claude -p, one codex exec).
+#
+# Triggers are intentionally narrow to keep API cost low. This is a setup
+# and behavior verification — it does not need to run on every push:
+#
+#   - release.published  — validates each release after it is tagged
+#   - workflow_dispatch  — manual run against any branch from the Actions UI
+#
+# Mechanical drift is caught by validate.yml on every push; this workflow
+# is only for the agents-actually-see-the-config check.
+#
+# Required repository secrets:
+#   ANTHROPIC_API_KEY — https://console.anthropic.com/settings/keys
+#   OPENAI_API_KEY    — https://platform.openai.com/api-keys
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  claude-smoke:
+    name: Claude Code sees CLAUDE.md
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Verify Claude sees the skill roster
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          PROMPT='List the shipped skills from CLAUDE.md by directory name, comma-separated, no other text.'
+          RESP=$(claude -p "$PROMPT")
+          echo "::group::claude response"
+          echo "$RESP"
+          echo "::endgroup::"
+          for skill in implement-review my-router ci-mockup-figure readme-polish; do
+            if ! grep -q "$skill" <<<"$RESP"; then
+              echo "::error::missing skill in response: $skill"
+              exit 1
+            fi
+          done
+          echo "PASS: all 4 skills mentioned"
+
+  codex-smoke:
+    name: Codex sees AGENTS.md
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex
+
+      - name: Verify Codex sees the skill roster
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          PROMPT='List the shipped skills from AGENTS.md by directory name, comma-separated, no other text.'
+          RESP=$(codex exec "$PROMPT")
+          echo "::group::codex response"
+          echo "$RESP"
+          echo "::endgroup::"
+          for skill in implement-review my-router ci-mockup-figure readme-polish; do
+            if ! grep -q "$skill" <<<"$RESP"; then
+              echo "::error::missing skill in response: $skill"
+              exit 1
+            fi
+          done
+          echo "PASS: all 4 skills mentioned"

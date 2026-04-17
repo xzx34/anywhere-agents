@@ -15,7 +15,7 @@ A maintained, opinionated configuration for Claude Code and Codex that follows y
 [![Docs](https://img.shields.io/readthedocs/anywhere-agents?color=990000&label=docs)](https://anywhere-agents.readthedocs.io/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-990000.svg)](LICENSE)
 [![CI](https://github.com/yzhao062/anywhere-agents/actions/workflows/validate.yml/badge.svg)](https://github.com/yzhao062/anywhere-agents/actions/workflows/validate.yml)
-[![GitHub stars](https://img.shields.io/github/stars/yzhao062/anywhere-agents?style=social)](https://github.com/yzhao062/anywhere-agents)
+[![GitHub stars](https://img.shields.io/github/stars/yzhao062/anywhere-agents?style=social&cacheSeconds=300)](https://github.com/yzhao062/anywhere-agents)
 
 [Install](#install) &nbsp;•&nbsp;
 [Scenarios](#what-it-does-in-practice) &nbsp;•&nbsp;

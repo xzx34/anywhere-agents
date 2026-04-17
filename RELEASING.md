@@ -34,6 +34,41 @@ grep -rEi "yuezh|yzhao010|USC|miniforge3|py312|Overleaf" \
 
 If any of the three checks fail, stop and fix before continuing.
 
+## Real-agent smoke tests
+
+Two scripts exercise different layers. CI runs complementary workflows (`validate.yml`, `real-agent-smoke.yml`, `package-smoke.yml`) on every push, every release, and weekly.
+
+### Pre-tag gate: validate the release candidate
+
+`scripts/pre-push-smoke.sh` checks the commit you are about to tag — **not** the published package:
+
+1. Regenerates `CLAUDE.md` / `agents/codex.md` in a temp dir from the committed `AGENTS.md` and diffs against the committed files. Catches stale generator output.
+2. Runs `claude -p "..."` in the repo root and asserts the response lists every skill under `skills/`. Proves Claude actually loads the committed `CLAUDE.md`.
+3. Runs `codex exec "..."` with the same assertion for Codex.
+
+Agent calls are skipped (not failed) if the CLI is missing, so the script is useful on machines with only one agent configured.
+
+```bash
+bash scripts/pre-push-smoke.sh
+```
+
+The pre-push git hook (`.githooks/pre-push`, enable with `git config core.hooksPath .githooks`) runs this automatically when a push touches `AGENTS.md`, `bootstrap/`, `scripts/`, or `skills/`.
+
+### Post-publish verification: validate the published artifacts
+
+`scripts/remote-smoke.sh` bootstraps a throwaway project via the **published** package — `pipx run anywhere-agents`, `npx anywhere-agents`, or the raw-shell install — then asserts file structure + user-level hook deployment + agent behavior end-to-end. Useful for ad-hoc verification from a maintainer machine:
+
+```bash
+bash scripts/remote-smoke.sh
+
+# From a dev machine, via SSH to an agent-equipped host (e.g., the DGX release-gate box):
+ssh user@host 'bash -s' < scripts/remote-smoke.sh
+```
+
+CI runs `.github/workflows/package-smoke.yml` automatically on `release: published` and weekly, covering the same surface across a larger OS × Python/Node matrix. The manual `remote-smoke.sh` is convenient when you want to spot-check immediately after publishing without waiting for the weekly scheduled run.
+
+Prerequisites on the agent-equipped machine: `git`, `python3`, and at least one of `pipx` / `npx` / `curl` for the install step; plus `claude` CLI with `ANTHROPIC_API_KEY` and `codex` CLI with `OPENAI_API_KEY` for the roster assertions (which are skipped gracefully if a CLI is missing).
+
 ## Version bump (single source of truth)
 
 Only **three files** hold the release version. The CLIs read their version at runtime from these files, so there are no other strings to touch.
