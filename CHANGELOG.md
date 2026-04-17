@@ -11,6 +11,50 @@ Version tags apply uniformly to the repo content **and** the matching `anywhere-
 
 _No unreleased changes queued._
 
+## [0.1.3] — 2026-04-16
+
+Central `AGENTS.md` → per-agent file generator (`CLAUDE.md`, `agents/codex.md`), Claude Code SessionStart hook that enforces bootstrap automatically, Scenario E in the README for the "you are running suboptimal defaults without knowing" pitch, and a 1:1 Simplified Chinese README.
+
+### Added
+
+- **Central source + per-agent generator.** `AGENTS.md` becomes the single source of truth for agent rule files. New HTML-comment markers (`<!-- agent:claude -->` / `<!-- agent:codex -->`) tag agent-specific sections. `scripts/generate_agent_configs.py` reads `AGENTS.md` and emits `CLAUDE.md` (Claude Code auto-loads this natively) and `agents/codex.md`. Each generated file carries a `GENERATED FILE` header and a documented precedence ladder. Bootstrap re-runs the generator on every session.
+- **Hand-authored file protection.** The generator preserves any `CLAUDE.md` / `agents/codex.md` that lacks the `GENERATED FILE` header and prints a loud warning until the user resolves it. To keep a custom rule file, rename to `CLAUDE.local.md` — which wins over the generated file in the precedence ladder.
+- **SessionStart hook enforces bootstrap.** `scripts/session_bootstrap.py` deploys to `~/.claude/hooks/session_bootstrap.py` on first bootstrap run. On every subsequent Claude Code session, the hook runs `.agent-config/bootstrap.sh` (or `.ps1`) if present, no-op otherwise. Users no longer need to type a reminder to keep the config fresh — for Claude Code, updates are fully automatic.
+- **Configuration Precedence section in `AGENTS.md`.** Documents the three config layers (rule files, Claude Code settings, env vars) with explicit precedence rules.
+- **Scenario E in README** — "The settings you did not know you were missing." Makes the selling point explicit: most Claude Code / Codex users never touch effort levels, model selection, or Codex MCP config; `anywhere-agents` ships the recommended default stack in one install.
+- **README Install section** now documents the verbal fallback for non-Claude agents (Codex, Cursor, etc.) that lack SessionStart hook support — tell the agent `read @AGENTS.md to run bootstrap, session checks, and task routing` on the first message of each session.
+- **`README.zh-CN.md`** — a 1:1 Simplified Chinese translation of `README.md`. Language switcher at the top of both files (`English · 中文`). Code blocks, Mermaid diagram labels, file paths, URLs, and skill names stay in English for consistency; narrative, section titles, table contents, and callouts are translated.
+
+### Changed
+
+- `user/settings.json` declares a `SessionStart` hook alongside the existing `PreToolUse` guard hook.
+- `bootstrap/bootstrap.sh` and `bootstrap.ps1` run the generator after fetching `AGENTS.md`, and deploy `session_bootstrap.py` alongside `guard.py` to `~/.claude/hooks/`.
+- `AGENTS.md` "What gets shared" table lists the new generated files and the user-level hook set (guard + session bootstrap).
+- `AGENTS.md` "Environment Notes" Claude Code install + effort-level bullets are now tagged with `<!-- agent:claude -->` so Codex does not see the noise.
+- `AGENTS.md` "Codex MCP Integration" section is tagged with `<!-- agent:codex -->` so Claude Code does not see the Codex setup noise.
+
+### Fixed
+
+- **Claude Code settings precedence wording in `AGENTS.md` Configuration Precedence section** — the ordering was reversed relative to Claude Code's documented behavior. Corrected to `managed policy > command-line args > .claude/settings.local.json > .claude/settings.json > ~/.claude/settings.json`. Regenerated `CLAUDE.md` and `agents/codex.md` so the correction propagates.
+- **SessionStart hook noise** — `scripts/session_bootstrap.py` now captures subprocess stdout and emits one concise line (`anywhere-agents: bootstrap refreshed`) to avoid flooding Claude Code's session-start context with `git pull` status, clone progress, or generator messages. Errors surface to stderr with the last ~2 KB of child output for debugging.
+- **Generator preserve-warning path for nested outputs** — the rename hint previously dropped the `agents/` prefix for `agents/codex.md`. Now the warning includes the full relative path, and a regression test covers the nested case.
+- **Whitespace normalization in generator** — `extract_for()` now strips trailing whitespace on every line, so generated files do not inherit whitespace-only source lines that fail `git diff --cached --check`.
+
+### Review history
+
+0.1.3 passed `implement-review` with Codex before release. Resolved findings:
+
+- **Medium** — Claude Code settings precedence wording in `AGENTS.md` reversed managed-policy order; corrected to match the documented `managed policy > command-line args > .local > project > user` chain.
+- **Medium** — `scripts/session_bootstrap.py` forwarded raw subprocess stdout into Claude Code's session-start context; now captures and emits one concise summary line.
+- **Low** — Generator preserve-warning dropped the `agents/` prefix for nested outputs; fixed, with a regression test.
+- **Low** — Private repo `AGENTS.md` source had a whitespace-only line that propagated into generated files and failed `git diff --cached --check`; source corrected and generator now normalizes trailing whitespace on every line.
+- **Low** — Private repo `AGENTS.md` "What gets shared" table did not yet list the new generated files and SessionStart hook ownership; added.
+- **Medium** — `README.zh-CN.md` translated comments inside code blocks, violating the "keep code blocks verbatim in English" contract; restored English comments inside fences and kept translation outside.
+- **Low** — Both READMEs introduced the scenarios as "Four" after Scenario E was added; corrected to "Five concrete scenarios" / "五个具体场景".
+- **Low** — Repo-layout tree in the collapsible was stale (missed `CLAUDE.md`, `agents/codex.md`, `scripts/generate_agent_configs.py`, `scripts/session_bootstrap.py`); updated in both READMEs.
+- **Low** — Chinese README used half-width punctuation in prose (`,`, `:`, `(`, `)` between Chinese characters); converted to full-width Chinese punctuation (`，` `。` `；` `：` `（）`) in prose while leaving code blocks, URLs, file paths, badge IDs, and English literals unchanged.
+- No High-priority findings.
+
 ## [0.1.2] — 2026-04-16
 
 Two new shipped skills (`ci-mockup-figure`, `readme-polish`), Read the Docs site launch, scenario-first README, reframed hero (project is the subject, author credentials become supporting evidence), Scenario B visualized as a left-to-right flowchart, and the usual round of Codex-driven corrections.
@@ -136,7 +180,8 @@ Initial public release. The sanitized downstream of the author's private daily-d
 - **Medium** — README / CHANGELOG / hero overstated the guard hook's scope by listing `rm -rf` alongside Git/GitHub commands. Corrected to distinguish guard-covered commands from settings-based permission prompts.
 - **Low** — Trailing whitespace in `AGENTS.md`; `docs/hero.html` external avatar URL (vendored to `docs/avatar.jpg` for reproducibility). Both fixed.
 
-[Unreleased]: https://github.com/yzhao062/anywhere-agents/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/yzhao062/anywhere-agents/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.3
 [0.1.2]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.2
 [0.1.1]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.1
 [0.1.0]: https://github.com/yzhao062/anywhere-agents/releases/tag/v0.1.0

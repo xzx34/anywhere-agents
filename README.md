@@ -2,6 +2,8 @@
 
 <div align="center">
 
+**English · [中文](README.zh-CN.md)**
+
 # anywhere-agents
 
 **Your AI agents, configured once and running everywhere.**
@@ -35,7 +37,7 @@ You use AI coding agents across many projects. You have preferences — how revi
 
 ## What it does in practice
 
-Four concrete scenarios. These are what actually changes when you use `anywhere-agents`, not the features that describe it.
+Five concrete scenarios. These are what actually changes when you use `anywhere-agents`, not the features that describe it.
 
 ### A. Add to any project
 
@@ -119,6 +121,27 @@ Every destructive Git or GitHub command (`push --force`, `reset --hard`, `gh pr 
 
 Shell deletes (`rm -rf`) are gated separately through Claude Code's built-in permission prompts configured in `user/settings.json`.
 
+### E. The settings you did not know you were missing
+
+Most Claude Code and Codex users never touch:
+
+- **Effort level** — Claude Code defaults to `medium`. The `/effort` slider lets you pick `max`, but only for the current session; it does not persist.
+- **Codex MCP config** — most users never open `~/.codex/config.toml` and run defaults that are slower and less capable than they need to be.
+- **GitHub Actions pins** — workflows pinned at older majors still work today but will break when Node.js 20 is removed.
+- **Banned AI-tell vocabulary** — prose comes out with `delve`, `pivotal`, `underscore` because nobody curates a project-level style guide.
+
+You would have to read a dozen docs pages to discover these individually. `anywhere-agents` ships the recommended default stack in one install:
+
+| Default | How it lands |
+|---|---|
+| `CLAUDE_CODE_EFFORT_LEVEL=max` persistent across every session | Merged into `~/.claude/settings.json` by bootstrap |
+| Recommended Codex `config.toml` (`model = "gpt-5.4"`, `model_reasoning_effort = "xhigh"`, `service_tier = "fast"`) | Documented and verified by session-start check |
+| `guard.py` PreToolUse hook blocks muscle-memory destructive commands | Deployed to `~/.claude/hooks/guard.py` |
+| `session_bootstrap.py` SessionStart hook keeps the config fresh every session | Deployed to `~/.claude/hooks/session_bootstrap.py` |
+| Session-start check flags outdated Actions pins, missing Codex config, and session model/effort below preference | Runs on every new session |
+
+Most users are running suboptimal defaults without knowing. This is the upgrade they did not look up.
+
 ## Install
 
 > [!TIP]
@@ -134,9 +157,15 @@ npx anywhere-agents
 
 ### How to update
 
-Bootstrap is idempotent. Every new agent session pulls the latest `AGENTS.md`, skills, and settings from upstream, so **you usually do not need to re-run the install command** — just start a new session in the project and the agent syncs as its first step.
+**For Claude Code, updates are automatic.** `anywhere-agents` installs a SessionStart hook that runs bootstrap every time you open a Claude Code session, so the shared `AGENTS.md`, skills, and settings stay fresh with no typing.
 
-To force a refresh mid-session (for example, when the maintainer just pushed a fix you need right now):
+**For Codex or other agents** (no SessionStart hook support today), tell the agent in your first message of a session:
+
+> `read @AGENTS.md to run bootstrap, session checks, and task routing`
+
+This triggers the agent to read the bootstrap block in `AGENTS.md` and execute it. Same effect as the hook, one verbal invocation per session.
+
+**To force a refresh mid-session** (for example, when the maintainer just pushed a fix you need right now):
 
 ```bash
 # macOS / Linux
@@ -146,7 +175,7 @@ bash .agent-config/bootstrap.sh
 & .\.agent-config\bootstrap.ps1
 ```
 
-To pin to a specific version, fork the repo and check out a tag in your fork, then point consumers at your fork instead of the main branch.
+**To pin to a specific version**, fork the repo and check out a tag in your fork, then point consumers at your fork instead of the main branch.
 
 <details>
 <summary><b>Raw shell (no package manager required)</b></summary>
@@ -228,25 +257,30 @@ Disagree with any of this? Fork it and edit.
 
 ```text
 anywhere-agents/
-├── AGENTS.md                    # the opinionated configuration (curated defaults)
+├── AGENTS.md                      # central source: tagged rule file (curated defaults)
+├── CLAUDE.md                      # generated from AGENTS.md (Claude-specific + shared)
+├── agents/
+│   └── codex.md                   # generated from AGENTS.md (Codex-specific + shared)
 ├── bootstrap/
-│   ├── bootstrap.sh             # idempotent sync for macOS/Linux
-│   └── bootstrap.ps1            # idempotent sync for Windows
+│   ├── bootstrap.sh               # idempotent sync for macOS/Linux
+│   └── bootstrap.ps1              # idempotent sync for Windows
 ├── scripts/
-│   └── guard.py                 # PreToolUse hook: blocks destructive commands with loud warnings
+│   ├── guard.py                   # PreToolUse hook: blocks destructive commands
+│   ├── generate_agent_configs.py  # tag-based generator (AGENTS.md -> CLAUDE.md + codex.md)
+│   └── session_bootstrap.py       # SessionStart hook: runs bootstrap automatically
 ├── skills/
-│   ├── ci-mockup-figure/        # HTML mockups + TikZ/skia-canvas for papers, proposals, READMEs
-│   ├── implement-review/        # structured dual-agent review loop (signature skill)
-│   ├── my-router/               # context-aware skill dispatcher (extend with your own)
-│   └── readme-polish/           # audit + rewrite GitHub READMEs with modern 2025-2026 patterns
+│   ├── ci-mockup-figure/          # HTML mockups + TikZ/skia-canvas for figures
+│   ├── implement-review/          # structured dual-agent review loop (signature skill)
+│   ├── my-router/                 # context-aware skill dispatcher
+│   └── readme-polish/             # audit + rewrite GitHub READMEs with modern patterns
 ├── .claude/
-│   ├── commands/                # pointer files so Claude Code discovers the skills
-│   └── settings.json            # project-level permissions
+│   ├── commands/                  # pointer files so Claude Code discovers the skills
+│   └── settings.json              # project-level permissions
 ├── user/
-│   └── settings.json            # user-level permissions, hook wiring, CLAUDE_CODE_EFFORT_LEVEL=max
-├── docs/                        # README hero assets + Read the Docs source
-├── tests/                       # bootstrap contract + smoke tests (Ubuntu + Windows CI)
-└── .github/workflows/           # validation CI
+│   └── settings.json              # user-level permissions, PreToolUse + SessionStart hooks, CLAUDE_CODE_EFFORT_LEVEL=max
+├── docs/                          # README hero assets + Read the Docs source
+├── tests/                         # bootstrap contract + smoke tests (Ubuntu + Windows CI)
+└── .github/workflows/             # validation CI
 ```
 
 </details>
