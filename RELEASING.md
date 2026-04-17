@@ -86,17 +86,26 @@ Use the same version number across all three files. Add a `[X.Y.Z] — YYYY-MM-D
 
 ## Verify version locally before tagging
 
+Build, check metadata, then install into a scratch venv so the daily environment stays clean and any missing package-data / entry-point issue shows up before publish. Run the import check from outside the repo root, since Python's `sys.path[0]=''` would otherwise resolve `import anywhere_agents` to the source tree instead of the installed wheel and mask real packaging bugs.
+
 ```bash
-# Build and install the PyPI wheel into a scratch location
 rm -rf packages/pypi/dist packages/pypi/build packages/pypi/*.egg-info
 python -m build packages/pypi --outdir packages/pypi/dist
 python -m twine check packages/pypi/dist/*
-pip install --force-reinstall --no-deps packages/pypi/dist/*.whl
-anywhere-agents --version   # should print anywhere-agents X.Y.Z
+
+SCRATCH=$(python -c "import tempfile; print(tempfile.mkdtemp(prefix='aa-prerelease-'))")
+python -m venv "$SCRATCH/venv"
+"$SCRATCH/venv/Scripts/python.exe" -m pip install --quiet packages/pypi/dist/*.whl
+cd "$SCRATCH"
+"$SCRATCH/venv/Scripts/python.exe" -c "import anywhere_agents; print(anywhere_agents.__version__)"   # should print X.Y.Z
+"$SCRATCH/venv/Scripts/anywhere-agents.exe" --version   # should print anywhere-agents X.Y.Z
+cd -
 
 # Run the Node CLI directly (no install)
 node packages/npm/bin/anywhere-agents.js --version   # should print anywhere-agents X.Y.Z
 ```
+
+On macOS / Linux, replace `Scripts/python.exe` with `bin/python` and `Scripts/anywhere-agents.exe` with `bin/anywhere-agents`.
 
 ## Commit, tag, push
 
@@ -112,7 +121,31 @@ The tag must be on the same commit as the version bump. Later reviewers verify t
 
 ## Publish to PyPI
 
-From the repo root after tagging:
+Two-step flow: upload to TestPyPI first to catch metadata or auth issues cheaply, then to real PyPI. Skip TestPyPI only for hotfixes with no packaging changes; it costs ~90 seconds and catches genuine regressions.
+
+### Step 1 — TestPyPI dry run
+
+Assumes a `pypitest` section in `~/.pypirc` pointing at `https://test.pypi.org/legacy/` with a TestPyPI-scoped token. TestPyPI's simple index can lag the JSON API by 30-60 seconds after upload; the `sleep 60` turns that into an executable wait rather than a flaky race.
+
+```bash
+python -m twine upload --repository pypitest packages/pypi/dist/*
+sleep 60
+
+SCRATCH=$(python -c "import tempfile; print(tempfile.mkdtemp(prefix='aa-testpypi-'))")
+python -m venv "$SCRATCH/venv"
+cd "$SCRATCH"
+"$SCRATCH/venv/Scripts/python.exe" -m pip install --quiet \
+    --index-url https://test.pypi.org/simple/ \
+    --extra-index-url https://pypi.org/simple/ anywhere-agents==X.Y.Z
+"$SCRATCH/venv/Scripts/python.exe" -c "import anywhere_agents; assert anywhere_agents.__version__ == 'X.Y.Z'; print(anywhere_agents.__version__)"
+cd -
+```
+
+On macOS / Linux, replace `Scripts/python.exe` with `bin/python`.
+
+### Step 2 — Real PyPI upload
+
+After the TestPyPI verify passes, upload to the real index:
 
 ```bash
 python -m twine upload packages/pypi/dist/*
@@ -149,8 +182,17 @@ npx anywhere-agents@X.Y.Z --version
 
 ## Post-release
 
+- **Create the GitHub release.** Required to trigger `real-agent-smoke.yml` and `package-smoke.yml`; both workflows bind to `release: published`, not to tag push, so without a GitHub release the post-publish CI never fires and the release is not validated end-to-end. Draft the body in `vX.Y.Z-release-notes.md` and one-time-only add `v*-release-notes.md` to `.git/info/exclude` so drafts never land on `git add -A`:
+
+  ```bash
+  echo "v*-release-notes.md" >> .git/info/exclude   # one-time, repo-local ignore
+  gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes-file vX.Y.Z-release-notes.md
+  ```
+
+  Confirm both workflows go green on the Actions tab before announcing the release.
 - Close any GitHub issues that were addressed by the release (reference the tag in the closing comment).
 - Update `[Unreleased]` section of `CHANGELOG.md` to start fresh (`_No unreleased changes queued._`).
+- Delete the local `vX.Y.Z-release-notes.md` scratch file.
 
 ## Common gotchas
 
