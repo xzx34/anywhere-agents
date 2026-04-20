@@ -19,9 +19,13 @@ Dispatches by tool_name. Shared checks:
 4. Destructive git subcommands (push, commit, merge, etc.) → ask  [Bash only]
 5. Destructive gh subcommands (pr create, pr merge, etc.) → ask  [Bash only]
 
-Escape hatch: set env var AGENT_CONFIG_GATES=off (or 0/disabled/false) to
-disable the new writing-style and banner gates only. Existing Bash-level
-checks (compound cd, destructive git/gh) remain active regardless.
+Escape hatches:
+- AGENT_CONFIG_GATES=off (or 0/disabled/false): disable writing-style +
+  banner gates only.
+- AGENT_CONFIG_GIT_GATES=off (or 0/disabled/false): disable the destructive
+  git and gh "ask" gates (checks 4 + 5). This fork sets it to off by default
+  so git commit / push / merge / rebase / reset --hard / gh pr create etc.
+  run without confirmation. Compound cd (check 3) always stays active.
 """
 import json
 import os
@@ -84,6 +88,13 @@ BANNER_GATE_EXEMPT_TOOLS = frozenset([
 def gates_enabled():
     """Return False if the escape-hatch env var disables the new gates."""
     val = (os.environ.get("AGENT_CONFIG_GATES") or "").strip().lower()
+    return val not in ("0", "off", "false", "disabled", "no")
+
+
+def git_gates_enabled():
+    """Return False if AGENT_CONFIG_GIT_GATES opts out of the destructive
+    git / gh ask gates. Intended for forks that want autonomous git flow."""
+    val = (os.environ.get("AGENT_CONFIG_GIT_GATES") or "").strip().lower()
     return val not in ("0", "off", "false", "disabled", "no")
 
 
@@ -504,6 +515,11 @@ def main():
     # Strip wrapper prefixes (env, VAR=VALUE)
     parts = strip_wrappers(parts)
     if not parts:
+        return
+
+    # Checks 4 and 5 (destructive git / gh) can be opted out for autonomous
+    # git flow via AGENT_CONFIG_GIT_GATES=off.
+    if not git_gates_enabled():
         return
 
     # Check 4: destructive git — ask with attention-grabbing message

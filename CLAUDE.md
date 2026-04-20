@@ -192,9 +192,10 @@ If anything is off, replace `all clear` with a semicolon-separated list of concr
 
 ## Git Safety
 
-- **Never run `git commit` or `git push` without explicit user approval.** Always show the proposed action and ask for confirmation before executing.
-- This rule is non-negotiable and applies to all projects that consume this shared config.
-- This includes any variant: `git commit -m`, `git commit --amend`, `git push`, `git push --force`, `gh pr create` (which pushes), etc.
+- **This fork (`xzx34/anywhere-agents`) relaxes the upstream Git safety rule.** Git and GitHub CLI commands (`git commit`, `git push`, `git merge`, `git rebase`, `gh pr create`, etc.) may run autonomously without a per-command approval prompt, so day-to-day flow is uninterrupted.
+- The agent still states the proposed action in one short line before running it, so the user can interrupt.
+- Force-rewrite of shared history (`git push --force` against `main`/`master`, `git reset --hard` on branches with upstream commits) should still surface a brief heads-up even though the gate is off.
+- Filesystem deletes (`rm -rf`) stay gated via the project-level permissions list.
 
 ## Mechanical Enforcement
 
@@ -205,12 +206,16 @@ Bootstrap deploys `scripts/guard.py` to `~/.claude/hooks/guard.py` and wires it 
 | Writing-style | `Write`, `Edit`, `MultiEdit` on `.md` / `.tex` / `.rst` / `.txt` | Outgoing content contains a banned AI-tell word (see Writing Defaults list) | **deny** with hit list |
 | Banner emission | Any tool except `Read`, `Grep`, `Glob`, `Skill`, `Task`, `TodoWrite`, `BashOutput`, `WebFetch`, `WebSearch`, `ToolSearch`, `LS`, `NotebookRead`; plus `Write`/`Edit`/`MultiEdit` whose target path exactly equals `<project-root>/.agent-config/banner-emitted.json` after absolute-path normalization and Windows case folding | `<project-root>/.agent-config/session-event.json.ts > <project-root>/.agent-config/banner-emitted.json.ts`. `<project-root>` is found by walking up from `cwd` until `.agent-config/bootstrap.{sh,ps1}` is present. Source repos (no `.agent-config/`) and unrelated directories skip the gate entirely | **deny** with instruction to emit banner + write acknowledgment to the per-project ack file |
 | Compound `cd` | `Bash` | Command contains `cd <path> && <cmd>` or `cd <path>; <cmd>` | **deny** with suggestion to use `git -C` or path arguments |
-| Destructive git | `Bash` | `git push`, `git commit`, `git merge`, `git rebase`, `git reset --hard`, `git clean`, `git branch -d/-D`, `git tag -d`, `git stash drop/clear` | **ask** (user confirms) |
-| Destructive gh | `Bash` | `gh pr create`, `gh pr merge`, `gh pr close`, `gh repo delete` | **ask** (user confirms) |
+| Destructive git | `Bash` | `git push`, `git commit`, `git merge`, `git rebase`, `git reset --hard`, `git clean`, `git branch -d/-D`, `git tag -d`, `git stash drop/clear` | **ask** (user confirms) unless `AGENT_CONFIG_GIT_GATES=off` |
+| Destructive gh | `Bash` | `gh pr create`, `gh pr merge`, `gh pr close`, `gh repo delete` | **ask** (user confirms) unless `AGENT_CONFIG_GIT_GATES=off` |
 
-**Escape hatch:** set env var `AGENT_CONFIG_GATES=off` (or `0`/`disabled`/`false`) via the `env` block in `~/.claude/settings.json` to disable the two new gates (writing-style and banner). The compound-cd / destructive-git / destructive-gh checks remain active regardless, since they guard against muscle-memory mistakes that do not tolerate false positives.
+**Escape hatches:**
 
-Setting the escape hatch is the right move when a legitimate write has a banned word in *meta-discussion* context (for example, a style-guide document that quotes banned words as examples of what to avoid), or when a prompt-layer failure is blocking legitimate work. Fix the false positive, then remove the override.
+- `AGENT_CONFIG_GATES=off` in `~/.claude/settings.json` `env` disables only the writing-style and banner gates.
+- `AGENT_CONFIG_GIT_GATES=off` disables the destructive git and gh "ask" gates. This fork ships with this flag set by default in `user/settings.json`, so git / gh commands run autonomously. Remove the flag (or set it to `on`) in your own fork if you want the strict upstream behavior back.
+- The compound `cd` check (Bash) is always active regardless of the flags above.
+
+Setting `AGENT_CONFIG_GATES=off` is the right move when a legitimate write has a banned word in *meta-discussion* context (for example, a style-guide document that quotes banned words as examples of what to avoid), or when a prompt-layer failure is blocking legitimate work. Fix the false positive, then remove the override.
 
 ## Shell Command Style
 
@@ -218,7 +223,7 @@ Setting the escape hatch is the right move when a legitimate write has a banned 
   - For git in another repo: use `git -C <path> <subcommand>` instead of `cd <path> && git <subcommand>`.
   - For non-git commands: pass the target path as an argument (e.g., `ls <path>`, `python <path>/script.py`) or use separate tool calls.
 - Examples of read-only invocations that should not require approval: `git status`, `git diff`, `git log`, `git branch` (no flags), `git show`, `git stash list`, `git remote -v`, `git submodule status`, `git ls-files`, `git tag --list`. Filesystem reads (`ls`, `cat`) and benign local operations (`mkdir`) are also fine.
-- Examples of invocations that always require explicit approval: `git commit`, `git push`, `git reset`, `git checkout`, `git rebase`, `git merge`, `git branch -d`, `git remote add/remove`, `git tag <name>` (creating/deleting), `git stash drop`.
+- In upstream these require explicit approval: `git commit`, `git push`, `git reset`, `git checkout`, `git rebase`, `git merge`, `git branch -d`, `git remote add/remove`, `git tag <name>` (creating/deleting), `git stash drop`. This fork turns the gate off by default via `AGENT_CONFIG_GIT_GATES=off`, so the agent may run them autonomously; it should still print a one-line note of what it is about to do so the user can interrupt.
 - Filesystem commands like `cp` and `mv` are fine for scratch and temporary files. Moves or renames that affect git-tracked files should be reviewed before executing.
 - **Avoid inline Python with `#` comments in quoted arguments.** Claude Code flags "newline followed by `#` inside a quoted argument" as a path-hiding risk and prompts for approval. Instead, write the code to a `.py` file and run `python <script>.py`.
 
